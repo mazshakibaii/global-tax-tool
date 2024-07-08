@@ -103,15 +103,24 @@ export class UnitedKingdomTax extends Base {
     }
   }
   private calculateNationalInsurance(): number {
-    const weeklyIncome = this.income / 52 // Convert to yearly income to weekly
+    const weeklyIncome = this.income / 52
 
-    // Create a new Base instance for NI calculation
-    const niCalculator = new Base(NIBands, weeklyIncome)
+    // Instead of creating a new Base instance, we'll implement the NI calculation directly
+    let totalNI = 0
+    let remainingIncome = weeklyIncome
 
-    // Use the Base class's calculation method
-    const niResult = niCalculator.calculateIncomeTaxBase()
+    for (const band of NIBands) {
+      const bandWidth = band.rangeEnd - band.rangeStart
+      const incomeInBand = Math.min(Math.max(remainingIncome, 0), bandWidth)
+      const niForBand = incomeInBand * band.rate
 
-    // Convert the weekly NI back to yearly and return
-    return niResult.totalTax * 52
+      totalNI += niForBand
+      remainingIncome -= bandWidth
+
+      if (remainingIncome <= 0) break
+    }
+
+    // Convert weekly NI to yearly
+    return totalNI * 52
   }
 }
