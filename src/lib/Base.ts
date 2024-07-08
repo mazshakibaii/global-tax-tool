@@ -23,7 +23,7 @@ export class Base {
     this.income = income
   }
 
-  public calculateIncomeTaxBase(): BaseTaxCalculation {
+  protected calculateIncomeTaxBase(): BaseTaxCalculation {
     let taxableIncome = 0
     let totalTax = 0
     const taxBands: (IncomeBand & { tax: number; incomeInBand: number })[] = []
