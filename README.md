@@ -6,6 +6,10 @@ This is a modular tool and the intention is to expand this across tax jurisdicti
 
 ## How to use
 
+```bash
+npm install global-tax-tool # or bun, pnpm, yarn, etc...
+```
+
 ```ts
 const calculator = new UnitedKingdomTax(100000) // 100,000 GBP annual income
 const tax = calculator.calculate()
