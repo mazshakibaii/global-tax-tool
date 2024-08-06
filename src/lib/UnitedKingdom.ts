@@ -48,14 +48,34 @@ const NIBands: IncomeBand[] = [
   },
 ]
 
+type StudentLoanInput =
+  | "planOne"
+  | "planTwo"
+  | "planFour"
+  | "planFive"
+  | "postGraduate"
+
+const StudentLoanBands = {
+  planOne: { threshold: 24990, rate: 0.09 },
+  planTwo: { threshold: 27295, rate: 0.09 },
+  planFour: { threshold: 31395, rate: 0.09 },
+  planFive: { threshold: 25000, rate: 0.09 },
+  postGraduate: { threshold: 21000, rate: 0.06 },
+}
+
 const personalAllowanceModifier = (
   bands: IncomeBand[],
-  income: number
+  income: number,
+  deductions: number
 ): IncomeBand[] => {
-  if (income > 100000) {
-    const incomeOver100k = income - 100000
+  const adjustedIncome = income - deductions
+  if (adjustedIncome > 100000) {
+    const incomeOver100k = adjustedIncome - 100000
     const personalAllowanceReduction = Math.min(incomeOver100k * 0.5, 12570) // Cap reduction at full personal allowance
 
+    console.log(adjustedIncome)
+    console.log(incomeOver100k)
+    console.log(personalAllowanceReduction)
     return bands.map((band, index) => {
       if (index === 0) {
         return {
@@ -78,34 +98,59 @@ const personalAllowanceModifier = (
       }
     })
   } else {
-    // If income is not over 100000, return the original bands unchanged
+    // If adjusted income is not over 100000, return the original bands unchanged
     return bands
   }
 }
 
 export class UnitedKingdomTax extends Base {
-  constructor(income: number) {
-    const modifiedBands = personalAllowanceModifier(UKBands, income)
-    super(modifiedBands, income)
+  public readonly studentLoan: StudentLoanInput
+  public readonly pension: { employee: number; employer: number }
+  constructor({
+    income,
+    studentLoan,
+    pension,
+  }: {
+    income: number
+    studentLoan: StudentLoanInput
+    pension: { employee: number; employer: number }
+  }) {
+    const deductions = pension.employee * income
+    const modifiedBands = personalAllowanceModifier(UKBands, income, deductions)
+    console.log(modifiedBands)
+    super(modifiedBands, income, deductions)
+    this.studentLoan = studentLoan
+    this.pension = pension
   }
   public calculate() {
     const NI = this.calculateNationalInsurance()
+    const studentLoan = this.calculateStudentLoan()
     const { takeHome, totalTax, taxBands, taxableIncome } =
       super.calculateIncomeTaxBase()
     return {
       income: this.income,
       taxableIncome,
+      taxFreeAllowance: taxBands[0].rangeEnd,
       incomeTax: totalTax,
-      totalDeductions: totalTax + NI,
-      takeHome: takeHome - NI,
+      totalDeductions:
+        totalTax + NI + studentLoan + this.pension.employee * this.income,
+      takeHome:
+        takeHome - NI - studentLoan - this.pension.employee * this.income,
       nationalInsurance: NI,
+      studentLoan: {
+        plan: this.studentLoan,
+        amount: studentLoan,
+      },
+      pension: {
+        employee: this.pension.employee * this.income,
+        employer: this.pension.employer * this.income,
+      },
       taxBands,
     }
   }
   private calculateNationalInsurance(): number {
     const weeklyIncome = this.income / 52
 
-    // Instead of creating a new Base instance, we'll implement the NI calculation directly
     let totalNI = 0
     let remainingIncome = weeklyIncome
 
@@ -122,5 +167,25 @@ export class UnitedKingdomTax extends Base {
 
     // Convert weekly NI to yearly
     return totalNI * 52
+  }
+
+  private calculateStudentLoan(): number {
+    function isStudentLoanInput(value: any): value is StudentLoanInput {
+      return [
+        "planOne",
+        "planTwo",
+        "planFour",
+        "planFive",
+        "postGraduate",
+      ].includes(value)
+    }
+    if (!this.studentLoan || !isStudentLoanInput(this.studentLoan)) return 0
+    const bands = StudentLoanBands[this.studentLoan]
+    const { threshold, rate } = bands
+
+    const overThreshold = this.income > threshold
+    const studentLoan = overThreshold ? (this.income - threshold) * rate : 0
+
+    return studentLoan
   }
 }

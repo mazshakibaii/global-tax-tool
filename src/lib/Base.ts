@@ -18,9 +18,11 @@ export type BaseTaxCalculation = {
 export class Base {
   private readonly bands: IncomeBand[]
   public readonly income: number
-  constructor(bands: IncomeBand[], income: number) {
+  public readonly deductions: number
+  constructor(bands: IncomeBand[], income: number, deducations: number) {
     this.bands = bands.sort((a, b) => a.rangeStart - b.rangeStart)
     this.income = income
+    this.deductions = deducations
   }
 
   protected calculateIncomeTaxBase(): BaseTaxCalculation {
@@ -28,7 +30,7 @@ export class Base {
     let totalTax = 0
     const taxBands: (IncomeBand & { tax: number; incomeInBand: number })[] = []
 
-    let remainingIncome = this.income
+    let remainingIncome = this.income - this.deductions
 
     for (const band of this.bands) {
       const bandWidth = band.rangeEnd - band.rangeStart
